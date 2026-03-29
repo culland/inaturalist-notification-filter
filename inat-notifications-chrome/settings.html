@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>iNat Notifications — Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; font-size: 14px; color: #333; background: #f5f5f5; padding: 32px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 600; color: #74ac00; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #444; }
+    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid #e0e0e0; }
+    .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type="text"], input[type="number"] {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    input[type="text"] { flex: 1; }
+    input[type="number"] { width: 80px; }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: #74ac00; }
+    button {
+      padding: 8px 16px;
+      background: #74ac00;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button:hover { background: #5d8c00; }
+    #term-list { display: flex; flex-direction: column; gap: 6px; }
+    .term-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #f9f9f9;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .term-text { flex: 1; }
+    .remove-btn {
+      background: none;
+      border: none;
+      color: #c0392b;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .remove-btn:hover { color: #922b21; background: none; }
+    .empty { color: #aaa; font-size: 13px; font-style: italic; padding: 8px 0; }
+    .info { font-size: 12px; color: #888; margin-top: 12px; line-height: 1.6; }
+    .saved-msg { color: #74ac00; font-size: 12px; margin-left: 8px; opacity: 0; transition: opacity 0.3s; }
+    .saved-msg.show { opacity: 1; }
+    .pages-row { display: flex; align-items: center; gap: 12px; }
+    .pages-label { font-size: 13px; color: #555; }
+  </style>
+</head>
+<body>
+  <h1><img src="icon_green.png" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;">iNat Notifications</h1>
+  <p class="subtitle">Settings</p>
+
+  <div class="card">
+    <h2>Pages to fetch <span id="saved-msg" class="saved-msg">Saved!</span></h2>
+    <div class="pages-row">
+      <input type="number" id="max-pages" min="1" max="50" value="2">
+      <span class="pages-label">pages × 200 notifications per page</span>
+    </div>
+    <p class="info">Fetched once each time you load an iNaturalist page. Higher values take longer but capture more history.</p>
+  </div>
+
+  <div class="card">
+    <h2>Whitelist</h2>
+    <div class="add-row">
+      <input type="text" id="new-term" placeholder="e.g. rosemary, added a comment">
+      <button id="add-btn">Add</button>
+    </div>
+    <div id="term-list"></div>
+    <p class="info">
+      Notifications are shown if they match <strong>any</strong> term (OR logic).<br>
+      Matching is case-insensitive. Works on message text or observation ID.
+      Example terms: "rosemary", "added an identification", "188284414" (observation ID).
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Notifications</h2>
+    <p class="info" style="margin-bottom:12px;">Purge all currently loaded notifications from the popup. They will be re-fetched fresh on the next iNaturalist page load.</p>
+    <button id="purge-btn" style="background:#c0392b;">Purge notifications</button>
+    <span id="purge-msg" class="saved-msg" style="color:#c0392b;">Purged!</span>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

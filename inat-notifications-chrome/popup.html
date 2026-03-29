@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 340px; font-family: system-ui, sans-serif; font-size: 13px; background: #fff; color: #333; }
+    header {
+      padding: 10px 14px;
+      background: #74ac00;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #settings-link {
+      font-size: 11px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.85);
+      cursor: pointer;
+      text-decoration: underline;
+      white-space: nowrap;
+    }
+    #settings-link:hover { color: white; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-bottom: 1px solid #eee;
+      background: #f9f9f9;
+    }
+    #filter-label { font-size: 12px; color: #555; flex: 1; }
+    .toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: #ccc; border-radius: 9px;
+      transition: background 0.2s; cursor: pointer;
+    }
+    .toggle input:checked + .toggle-track { background: #74ac00; }
+    .toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px;
+      background: white; border-radius: 50%;
+      transition: transform 0.2s; pointer-events: none;
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(14px); }
+    #list { max-height: 440px; overflow-y: auto; }
+    .item {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 14px; border-bottom: 1px solid #eee;
+      text-decoration: none; color: inherit;
+    }
+    .item:hover { background: #f5f5f5; }
+    .item img { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+    .no-img { width: 36px; height: 36px; background: #e0eed4; border-radius: 4px; flex-shrink: 0; }
+    .text .msg { line-height: 1.4; }
+    .text .date { color: #888; font-size: 11px; margin-top: 3px; }
+    .status { padding: 16px 14px; color: #888; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <span id="header-count">Loading...</span>
+    <span id="settings-link">Settings</span>
+  </header>
+  <div class="toolbar">
+    <span id="filter-label">Whitelist off</span>
+    <label class="toggle">
+      <input type="checkbox" id="filter-toggle">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+  </div>
+  <div id="list"><div class="status">Loading...</div></div>
+  <script src="popup.js"></script>
+</body>
+</html>

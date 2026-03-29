@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "iNaturalist Notifications",
+  "version": "1.0",
+  "description": "Shows your iNaturalist notifications in a popup",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "*://www.inaturalist.org/*",
+    "*://www.inaturalist.ca/*",
+    "*://inaturalist.org/*",
+    "*://inaturalist.ca/*"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_popup": "",
+    "default_title": "iNat Notifications — loading...",
+    "default_icon": "icon_gray.png"
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.inaturalist.org/*",
+        "*://www.inaturalist.ca/*",
+        "*://inaturalist.org/*",
+        "*://inaturalist.ca/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
