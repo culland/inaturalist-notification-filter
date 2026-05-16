@@ -1,40 +1,42 @@
 {
-  "manifest_version": 3,
-  "name": "iNaturalist Notifications",
-  "version": "1.3",
-  "description": "Shows your iNaturalist notifications in a popup",
-  "permissions": [
-    "storage"
-  ],
-  "host_permissions": [
-    "*://www.inaturalist.org/*",
-    "*://www.inaturalist.ca/*",
-    "*://inaturalist.org/*",
-    "*://inaturalist.ca/*",
-    "*://api.inaturalist.org/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "",
-    "default_title": "iNat Notifications — loading...",
-    "default_icon": "icon_gray.png"
-  },
-  "options_ui": {
-    "page": "settings.html",
-    "open_in_tab": true
-  },
-  "content_scripts": [
-    {
-      "matches": [
+    "manifest_version": 3,
+    "name": "iNaturalist Notifications",
+    "version": "1.4",
+    "description": "Shows your iNaturalist notifications in a popup",
+    "permissions": [
+        "storage"
+    ],
+    "host_permissions": [
         "*://www.inaturalist.org/*",
         "*://www.inaturalist.ca/*",
         "*://inaturalist.org/*",
-        "*://inaturalist.ca/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+        "*://inaturalist.ca/*",
+        "*://api.inaturalist.org/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "",
+        "default_title": "iNat Notifications — loading...",
+        "default_icon": "icon_gray.png"
+    },
+    "options_ui": {
+        "page": "settings.html",
+        "open_in_tab": true
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://www.inaturalist.org/*",
+                "*://www.inaturalist.ca/*",
+                "*://inaturalist.org/*",
+                "*://inaturalist.ca/*"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
 }

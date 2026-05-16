@@ -1,6 +1,6 @@
-# iNaturalist Notifications Filter Version 1.3
+# iNaturalist Notifications Filter Version 1.4
 
-A browser extension that fetches and displays your iNaturalist notifications with whitelist and blacklist filtering. The Chrome source in `inat-notifications-chrome` contains the current expanded feature set described below.
+A browser extension that fetches and displays your iNaturalist notifications with whitelist and blacklist filtering.
 
 ## Features
 
@@ -40,7 +40,7 @@ Your extension should now be active.
 
 A gray leaf appears in your browser toolbar. When you visit iNaturalist, the extension fetches notifications and stores them for the current browser session. The icon turns green when notifications are ready.
 
-Click the leaf to open the notification popup. Use the popup toggles to turn whitelist and blacklist filtering on or off. Click a notification to open it in a background tab. Right-click intentionally behaves the same as left-click so the popup stays open instead of being closed by the browser's normal `Open in new tab` menu action.
+Click the leaf to open the notification popup. Use the popup toggles to turn whitelist and blacklist filtering on or off. Click a notification to open it in a background tab.
 
 ## Settings
 
