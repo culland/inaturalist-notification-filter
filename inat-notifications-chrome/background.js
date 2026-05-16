@@ -22,6 +22,33 @@ function safeHref(raw) {
   }
 }
 
+function normalizeStoredNotifications(items) {
+  if (!Array.isArray(items)) return [];
+  const normalized = [];
+  const seen = new Set();
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue;
+    const href = safeHref(item.href);
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+    normalized.push({ ...item, href });
+  }
+  return normalized;
+}
+
+function normalizeHrefList(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map(safeHref).filter(Boolean);
+}
+
+let storageWriteQueue = Promise.resolve();
+
+function queueStorageWrite(task) {
+  const next = storageWriteQueue.then(task, task);
+  storageWriteQueue = next.catch(() => {});
+  return next;
+}
+
 // Mirror of popup.js termMatches — case-insensitive match on message text,
 // observation ID, or href substring. Keep these two implementations in sync.
 function termMatches(n, term) {
@@ -152,27 +179,33 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.action === 'saveNotifications') {
     (async () => {
-      const session = await chrome.storage.session.get(['notifications', 'seenHrefs']);
-      const existing = session.notifications || [];
-      const seenHrefs = new Set(session.seenHrefs || []);
-      const existingHrefs = new Set(existing.map(n => n.href));
-      const incoming = msg.notifications || [];
-      const newItems = [];
-      const seenIncoming = new Set();
-      for (const n of incoming) {
-        const href = safeHref(n.href);
-        if (!href) continue;
-        if (existingHrefs.has(href) || seenIncoming.has(href)) continue;
-        seenIncoming.add(href);
-        newItems.push({ ...n, href });
-      }
-      const all = [...newItems, ...existing];
-      await chrome.storage.session.set({ notifications: all });
-      const prefs = await chrome.storage.local.get([
-        'whitelist', 'blacklist', 'useFilter', 'useBlacklist', 'hideClickedNotifications'
-      ]);
-      const visibleCount = countVisible(all, seenHrefs, prefs);
-      sendResponse({ ok: true, totalStored: all.length, visibleCount });
+      const result = await queueStorageWrite(async () => {
+        const session = await chrome.storage.session.get(['notifications', 'seenHrefs']);
+        const existing = normalizeStoredNotifications(session.notifications);
+        const seenHrefs = new Set(normalizeHrefList(session.seenHrefs));
+        const existingHrefs = new Set(existing.map(n => n.href));
+        const incoming = Array.isArray(msg.notifications) ? msg.notifications : [];
+        const newItems = [];
+        const seenIncoming = new Set();
+        for (const n of incoming) {
+          const href = safeHref(n && n.href);
+          if (!href) continue;
+          if (existingHrefs.has(href) || seenIncoming.has(href)) continue;
+          seenIncoming.add(href);
+          newItems.push({ ...n, href });
+        }
+        const all = [...newItems, ...existing];
+        await chrome.storage.session.set({
+          notifications: all,
+          seenHrefs: [...seenHrefs]
+        });
+        const prefs = await chrome.storage.local.get([
+          'whitelist', 'blacklist', 'useFilter', 'useBlacklist', 'hideClickedNotifications'
+        ]);
+        const visibleCount = countVisible(all, seenHrefs, prefs);
+        return { ok: true, totalStored: all.length, visibleCount };
+      });
+      sendResponse(result);
     })();
     return true;
   }
@@ -229,18 +262,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false });
       return true;
     }
-    chrome.storage.session.get('seenHrefs').then(data => {
-      const seen = new Set(data.seenHrefs || []);
-      if (!seen.has(href)) {
+    (async () => {
+      const result = await queueStorageWrite(async () => {
+        const session = await chrome.storage.session.get(['notifications', 'seenHrefs']);
+        const notifications = normalizeStoredNotifications(session.notifications);
+        const seen = new Set(normalizeHrefList(session.seenHrefs));
         seen.add(href);
-        chrome.storage.session.set({ seenHrefs: [...seen] }).then(() => {
-          updateBadge();
-          sendResponse({ ok: true });
+        await chrome.storage.session.set({
+          notifications,
+          seenHrefs: [...seen]
         });
-      } else {
-        sendResponse({ ok: true });
-      }
-    });
+        return { ok: true };
+      });
+      updateBadge();
+      sendResponse(result);
+    })();
     return true;
   }
 

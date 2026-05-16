@@ -83,7 +83,7 @@ function apiHitToNotification(hit) {
 
 async function fetchViewedFromApi() {
   const token = await fetchApiToken();
-  const res = await fetch(`${API_BASE}/observations/updates?per_page=200`, {
+  const res = await fetch(`${API_BASE}/observations/updates?per_page=200&viewed=true`, {
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('api updates HTTP ' + res.status);

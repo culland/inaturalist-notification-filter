@@ -4,6 +4,13 @@ let maxPages = 10;
 let minVisibleNotifications = 25;
 let notificationFetchMode = 'unread';
 let hideClickedNotifications = true;
+const DEFAULT_WHITELIST = ['mentioned you'];
+const DEFAULT_MAX_PAGES = 10;
+const DEFAULT_MIN_VISIBLE_NOTIFICATIONS = 25;
+const MIN_PAGES_LIMIT = 1;
+const MAX_PAGES_LIMIT = 50;
+const MIN_VISIBLE_NOTIFICATIONS = 1;
+const MAX_VISIBLE_NOTIFICATIONS = 200;
 
 const termList = document.getElementById('term-list');
 const newTermInput = document.getElementById('new-term');
@@ -22,6 +29,17 @@ const hideClickedCheckbox = document.getElementById('hide-clicked');
 function showSaved() {
   savedMsg.classList.add('show');
   setTimeout(() => savedMsg.classList.remove('show'), 2000);
+}
+
+function normalizeTermList(value, fallback) {
+  if (!Array.isArray(value)) return [...fallback];
+  return value.filter(term => typeof term === 'string' && term.trim());
+}
+
+function clampInteger(value, fallback, min, max) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(num)));
 }
 
 function renderTermList(container, terms, emptyText, onRemove) {
@@ -47,6 +65,7 @@ function renderTermList(container, terms, emptyText, onRemove) {
     const btn = document.createElement('button');
     btn.className = 'remove-btn';
     btn.title = 'Remove';
+    btn.setAttribute('aria-label', 'Remove');
     btn.textContent = '×';
     btn.addEventListener('click', () => onRemove(i));
     item.appendChild(btn);
@@ -110,7 +129,7 @@ newBlTermInput.addEventListener('keydown', (e) => {
 
 maxPagesInput.addEventListener('change', () => {
   const val = parseInt(maxPagesInput.value);
-  if (val >= 1 && val <= 50) {
+  if (val >= MIN_PAGES_LIMIT && val <= MAX_PAGES_LIMIT) {
     maxPages = val;
     save();
   } else {
@@ -120,7 +139,7 @@ maxPagesInput.addEventListener('change', () => {
 
 minVisibleInput.addEventListener('change', () => {
   const val = parseInt(minVisibleInput.value);
-  if (val >= 1 && val <= 200) {
+  if (val >= MIN_VISIBLE_NOTIFICATIONS && val <= MAX_VISIBLE_NOTIFICATIONS) {
     minVisibleNotifications = val;
     save();
   } else {
@@ -158,10 +177,15 @@ chrome.storage.local.get([
   'notificationFetchMode',
   'hideClickedNotifications'
 ]).then(data => {
-  whitelist = data.whitelist || ['mentioned you'];
-  blacklist = data.blacklist || [];
-  maxPages = data.maxPages || 10;
-  minVisibleNotifications = data.minVisibleNotifications || 25;
+  whitelist = normalizeTermList(data.whitelist, DEFAULT_WHITELIST);
+  blacklist = normalizeTermList(data.blacklist, []);
+  maxPages = clampInteger(data.maxPages, DEFAULT_MAX_PAGES, MIN_PAGES_LIMIT, MAX_PAGES_LIMIT);
+  minVisibleNotifications = clampInteger(
+    data.minVisibleNotifications,
+    DEFAULT_MIN_VISIBLE_NOTIFICATIONS,
+    MIN_VISIBLE_NOTIFICATIONS,
+    MAX_VISIBLE_NOTIFICATIONS
+  );
   notificationFetchMode = ['unread', 'read', 'both'].includes(data.notificationFetchMode)
     ? data.notificationFetchMode
     : 'unread';

@@ -72,6 +72,17 @@
     .check-row { display: flex; align-items: center; gap: 8px; }
     .check-row input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
     .check-row label { font-size: 13px; color: #444; cursor: pointer; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
@@ -81,6 +92,7 @@
   <div class="card">
     <h2>Notifications to fetch</h2>
     <div class="pages-row">
+      <label class="sr-only" for="fetch-mode">Notifications to fetch</label>
       <select id="fetch-mode">
         <option value="unread">Unread only (default)</option>
         <option value="read">Read only (recovery)</option>
@@ -109,10 +121,12 @@
   <div class="card">
     <h2>Fetch limits <span id="saved-msg" class="saved-msg">Saved!</span></h2>
     <div class="pages-row" style="margin-bottom:10px;">
+      <label class="sr-only" for="max-pages">Maximum pages to scan</label>
       <input type="number" id="max-pages" min="1" max="50" value="10">
       <span class="pages-label">maximum pages to scan (× 200 notifications per page)</span>
     </div>
     <div class="pages-row">
+      <label class="sr-only" for="min-visible">Minimum visible notifications after filters</label>
       <input type="number" id="min-visible" min="1" max="200" value="25">
       <span class="pages-label">minimum visible notifications after filters</span>
     </div>
