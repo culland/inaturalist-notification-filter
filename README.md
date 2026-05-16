@@ -1,38 +1,63 @@
 # iNaturalist Notifications Filter Version 1.3
 
-A browser extension that fetches and displays your iNaturalist notifications with whitelist filtering.
+A browser extension that fetches and displays your iNaturalist notifications with whitelist and blacklist filtering. The Chrome source in `inat-notifications-chrome` contains the current expanded feature set described below.
 
 ## Features
-- Auto-fetches notifications on iNaturalist page load
-- Animated loading icon (gray while loading, green when ready)
-- Badge count showing new notifications since last popup open
-- Whitelist filtering by message text or observation ID
-- Settings page for whitelist and page count configuration
-- Purge button to clear all notifications and start fresh
+
+- Auto-fetches notifications when you load an iNaturalist page on `inaturalist.org` or `inaturalist.ca`
+- Fetches unread notifications without marking them read on iNaturalist
+- Animated loading icon: gray while waiting, animated while loading, green when notifications are ready
+- Popup remains available while a refresh is running if notifications are already loaded
+- Badge count shows loaded notifications that have not been opened or dismissed in the extension
+- Whitelist filtering to show only matching notifications
+- Blacklist filtering to hide matching notifications
+- Filters match message text, observation ID, or notification URL
+- Configurable fetch limits based on maximum pages scanned and minimum visible notifications after filters
+- Optional hide-clicked behavior: opened notifications can be removed from the popup or left visible but dimmed
+- Dismiss button for hiding a notification without opening it
+- Purge button to clear all loaded notifications and start fresh
+- Optional read/recovery mode for recently viewed observation updates from the iNaturalist API
 
 ## Installation
 
 ### Firefox
-1. Download the signed `.xpi`
-2. In Firefox brows to `about:addons`
-3. Click gear button on top right and select `Install Add-on from file...`
-4. Navigate to the downloaded xpi file from step 1.
+
+1. Download the signed `.xpi`.
+2. In Firefox browse to `about:addons`.
+3. Click the gear button on the top right and select `Install Add-on from file...`.
+4. Navigate to the downloaded `.xpi` file from step 1.
 
 ### Chrome
-1. Download the entire folder `inat-notifications-chrome`
-2. Go to `chrome://extensions`
-3. Enable Developer mode (top right toggle)
-4. Click Load unpacked (top left) → select the folder you downloaded in step 1
 
-Your extension should now be active!
+1. Download the entire folder `inat-notifications-chrome`.
+2. Go to `chrome://extensions`.
+3. Enable Developer mode using the top-right toggle.
+4. Click `Load unpacked` and select the folder you downloaded in step 1.
+
+Your extension should now be active.
 
 ## How to Use It
-A grey leaf will appear in the notification section of your browser. When iNaturalist.ca or iNaturalist.org are visited the extension will download notifications, and will add to the notifications every time iNaturalist is refreshed. When the leaf is green, click to see notifications and settings option.
+
+A gray leaf appears in your browser toolbar. When you visit iNaturalist, the extension fetches notifications and stores them for the current browser session. The icon turns green when notifications are ready.
+
+Click the leaf to open the notification popup. Use the popup toggles to turn whitelist and blacklist filtering on or off. Click a notification to open it in a background tab. Right-click intentionally behaves the same as left-click so the popup stays open instead of being closed by the browser's normal `Open in new tab` menu action.
 
 ## Settings
-- **Pages to fetch** — number of pages × 200 notifications per fetch (default: 2)
-- **Whitelist** — filter notifications by message text or observation ID (OR logic, case-insensitive)
-- **Purge** — clear all loaded notifications and start fresh
+
+- **Notifications to fetch** - choose `Unread only`, `Read only (recovery)`, or `Unread + read`.
+- **Unread only** - fetches unread iNaturalist notifications. This is the default mode.
+- **Read only (recovery)** - fetches up to 200 recently viewed observation updates from the iNaturalist API. This is useful if notifications were marked read before you acted on them.
+- **Unread + read** - combines normal unread fetching with read/recovery fetching.
+- **Fetch limits** - set the maximum pages to scan, and the minimum number of visible notifications to try to collect after whitelist, blacklist, and hide-clicked filters are applied. Defaults are 10 pages and 25 visible notifications.
+- **Display** - choose whether opening a notification removes it from the popup. If disabled, opened notifications remain visible but are dimmed.
+- **Whitelist** - when enabled in the popup, only notifications matching at least one whitelist term are shown.
+- **Blacklist** - when enabled in the popup, notifications matching any blacklist term are hidden. Can be combined with whitelist.
+- **Purge** - clears all currently loaded notifications and extension-side opened/dismissed tracking for the current browser session.
 
 ## Notes
-- Extension built for Firefox and ported to Chrome.
+
+- Fetching notifications does not mark them read on iNaturalist.
+- Read/recovery mode currently includes comments and identifications on observations, but not @mentions.
+- Filter-aware pagination applies to unread notification fetching. Read/recovery fetching uses one API request for up to 200 viewed updates.
+- Loaded notifications and opened/dismissed tracking are stored in `chrome.storage.session`, so they are cleared when the browser session ends or when you purge notifications.
+- Whitelist and blacklist terms are case-insensitive.

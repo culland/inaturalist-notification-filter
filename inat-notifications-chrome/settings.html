@@ -60,6 +60,18 @@
     .saved-msg.show { opacity: 1; }
     .pages-row { display: flex; align-items: center; gap: 12px; }
     .pages-label { font-size: 13px; color: #555; }
+    select {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+      background: white;
+      outline: none;
+    }
+    select:focus { border-color: #74ac00; }
+    .check-row { display: flex; align-items: center; gap: 8px; }
+    .check-row input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
+    .check-row label { font-size: 13px; color: #444; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -67,25 +79,87 @@
   <p class="subtitle">Settings</p>
 
   <div class="card">
-    <h2>Pages to fetch <span id="saved-msg" class="saved-msg">Saved!</span></h2>
+    <h2>Notifications to fetch</h2>
     <div class="pages-row">
-      <input type="number" id="max-pages" min="1" max="50" value="2">
-      <span class="pages-label">pages × 200 notifications per page</span>
+      <select id="fetch-mode">
+        <option value="unread">Unread only (default)</option>
+        <option value="read">Read only (recovery)</option>
+        <option value="both">Unread + read</option>
+      </select>
     </div>
-    <p class="info">Fetched once each time you load an iNaturalist page. Higher values take longer but capture more history.</p>
+    <p class="info">
+      <strong>Unread only</strong> (default): fetches notifications you have not yet
+      viewed on iNaturalist. This is the normal mode.<br><br>
+      <strong>Read only (recovery)</strong>: fetches notifications that iNaturalist
+      already considers <em>read</em>. This is useful when notifications you wanted
+      to see got marked read before you had a chance to act on them — for example, if
+      an older version of this extension auto-marked them read, if you accidentally
+      clicked "mark all as read" on iNaturalist, or if you simply want to revisit
+      recent activity. It pulls up to 200 of your most recent viewed updates from the
+      iNaturalist API in a single call and surfaces them in the popup so you can
+      review or re-open them.<br><br>
+      <strong>Unread + read</strong>: combines both — useful if you suspect some items
+      slipped into "read" status but you still want fresh unread items too.<br><br>
+      Fetching never marks notifications read on iNaturalist.<br>
+      Note: Read/recovery fetches use the iNaturalist API and currently include only
+      comments and identifications on observations — not @mentions.
+    </p>
   </div>
 
   <div class="card">
-    <h2>Whitelist</h2>
+    <h2>Fetch limits <span id="saved-msg" class="saved-msg">Saved!</span></h2>
+    <div class="pages-row" style="margin-bottom:10px;">
+      <input type="number" id="max-pages" min="1" max="50" value="10">
+      <span class="pages-label">maximum pages to scan (× 200 notifications per page)</span>
+    </div>
+    <div class="pages-row">
+      <input type="number" id="min-visible" min="1" max="200" value="25">
+      <span class="pages-label">minimum visible notifications after filters</span>
+    </div>
+    <p class="info">
+      Fetched once each time you load an iNaturalist page. The extension stops early once <strong>minimum visible</strong>
+      notifications (after whitelist, blacklist, and hide-clicked filters) are reached, or after the max pages cap.<br>
+      Filter-aware pagination only applies to the unread HTML fetch. Read/recovery mode fetches a single API page of up to 200 viewed items in one shot.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Display</h2>
+    <div class="check-row">
+      <input type="checkbox" id="hide-clicked">
+      <label for="hide-clicked">Hide notifications after I open them</label>
+    </div>
+    <p class="info">
+      When enabled, clicking a notification opens it in a new tab and removes it from the popup.
+      When disabled, opened notifications stay visible but appear dimmed.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Whitelist — show only matching</h2>
     <div class="add-row">
       <input type="text" id="new-term" placeholder="e.g. rosemary, added a comment">
       <button id="add-btn">Add</button>
     </div>
     <div id="term-list"></div>
     <p class="info">
-      Notifications are shown if they match <strong>any</strong> term (OR logic).<br>
-      Matching is case-insensitive. Works on message text or observation ID.
+      When the whitelist toggle is on in the popup, only notifications matching <strong>any</strong> term (OR logic) are shown.<br>
+      Matching is case-insensitive. Works on message text, observation ID, or href.
       Example terms: "rosemary", "added an identification", "188284414" (observation ID).
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Blacklist — hide matching</h2>
+    <div class="add-row">
+      <input type="text" id="new-bl-term" placeholder="e.g. suggested an ID, spam">
+      <button id="add-bl-btn">Add</button>
+    </div>
+    <div id="bl-term-list"></div>
+    <p class="info">
+      When the blacklist toggle is on in the popup, notifications matching <strong>any</strong> term are hidden.<br>
+      Matching is case-insensitive. Works on message text, observation ID, or href.<br>
+      Whitelist and blacklist can both be used. If both are on, the whitelist first narrows the list, then the blacklist removes unwanted matches.
     </p>
   </div>
 
