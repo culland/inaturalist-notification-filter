@@ -150,10 +150,7 @@ function renderNotifications(state) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
 
-    function openInBackground(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      browser.tabs.create({ url: href, active: false });
+    function markSeenAndMaybeHide() {
       if (!seenHrefs.has(href)) {
         seenHrefs.add(href);
         row.classList.add('seen');
@@ -165,10 +162,25 @@ function renderNotifications(state) {
       }
     }
 
-    link.addEventListener('click', openInBackground);
-    // Right-click intentionally behaves like left-click. Letting the browser
-    // show "open in new tab" closes the extension popup; opening the tab here
-    // keeps the popup open while still sending the notification to a new tab.
+    function openActive(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      browser.tabs.create({ url: href, active: true });
+      markSeenAndMaybeHide();
+    }
+
+    function openInBackground(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      browser.tabs.create({ url: href, active: false });
+      markSeenAndMaybeHide();
+    }
+
+    link.addEventListener('click', openActive);
+    // Right-click opens the notification in a background tab. Letting the
+    // browser show "open in new tab" closes the extension popup; opening the
+    // tab here keeps the popup open while still sending the notification to a
+    // new tab.
     link.addEventListener('contextmenu', openInBackground);
 
     const imgSrc = safeImageSrc(n.image);
