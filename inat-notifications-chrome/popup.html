@@ -26,13 +26,14 @@
     #settings-link:hover { color: white; }
     .toolbar {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: row;
+      gap: 12px;
       padding: 7px 14px;
       border-bottom: 1px solid #eee;
       background: #f9f9f9;
     }
-    #filter-label { font-size: 12px; color: #555; flex: 1; }
+    .toolbar-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .toolbar-row > span { font-size: 12px; color: #555; flex: 1; white-space: nowrap; }
     .toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-track {
@@ -50,15 +51,36 @@
     .toggle input:checked ~ .toggle-thumb { transform: translateX(14px); }
     #list { max-height: 440px; overflow-y: auto; }
     .item {
-      display: flex; gap: 10px; align-items: flex-start;
+      display: flex; align-items: flex-start;
       padding: 10px 14px; border-bottom: 1px solid #eee;
-      text-decoration: none; color: inherit;
     }
     .item:hover { background: #f5f5f5; }
+    .item.seen { opacity: 0.55; }
+    .item.seen:hover { opacity: 0.8; }
+    .item-link {
+      flex: 1; min-width: 0;
+      display: flex; gap: 10px; align-items: flex-start;
+      text-decoration: none; color: inherit;
+    }
     .item img { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
     .no-img { width: 36px; height: 36px; background: #e0eed4; border-radius: 4px; flex-shrink: 0; }
-    .text .msg { line-height: 1.4; }
+    .text { flex: 1; min-width: 0; }
+    .text .msg { line-height: 1.4; word-wrap: break-word; }
     .text .date { color: #888; font-size: 11px; margin-top: 3px; }
+    .dismiss-btn {
+      margin-left: 10px;
+      align-self: flex-start;
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+      cursor: pointer;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .dismiss-btn:hover { color: #555; background: #eee; }
     .status { padding: 16px 14px; color: #888; font-size: 12px; line-height: 1.8; white-space: pre-wrap; }
   </style>
 </head>
@@ -68,12 +90,22 @@
     <span id="settings-link">Settings</span>
   </header>
   <div class="toolbar">
-    <span id="filter-label">Whitelist off</span>
-    <label class="toggle">
-      <input type="checkbox" id="filter-toggle">
-      <div class="toggle-track"></div>
-      <div class="toggle-thumb"></div>
-    </label>
+    <div class="toolbar-row">
+      <span id="filter-label">Whitelist off</span>
+      <label class="toggle">
+        <input type="checkbox" id="filter-toggle">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="toolbar-row">
+      <span id="blacklist-label">Blacklist off</span>
+      <label class="toggle">
+        <input type="checkbox" id="blacklist-toggle">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
   </div>
   <div id="list"><div class="status">Loading...</div></div>
   <script src="popup.js"></script>

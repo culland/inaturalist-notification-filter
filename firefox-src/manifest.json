@@ -3,6 +3,17 @@
   "name": "iNaturalist Notifications",
   "version": "1.0",
   "description": "Shows your iNaturalist notifications in a popup",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "inat-notifications@ksanderson",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
   "permissions": [
     "activeTab",
     "storage",
@@ -10,7 +21,8 @@
     "*://www.inaturalist.org/*",
     "*://www.inaturalist.ca/*",
     "*://inaturalist.org/*",
-    "*://inaturalist.ca/*"
+    "*://inaturalist.ca/*",
+    "*://api.inaturalist.org/*"
   ],
   "background": {
     "scripts": ["background.js"]
