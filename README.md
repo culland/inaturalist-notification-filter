@@ -17,6 +17,7 @@ A browser extension that fetches and displays your iNaturalist notifications wit
 - Dismiss button for hiding a notification without opening it
 - Purge button to clear all loaded notifications and start fresh
 - Optional read/recovery mode for recently viewed observation updates from the iNaturalist API
+- Backlog clearing action to mark unread notification batches read on iNaturalist
 
 ## Installation
 
@@ -52,11 +53,12 @@ Click the leaf to open the notification popup. Use the popup toggles to turn whi
 - **Display** - choose whether opening a notification removes it from the popup. If disabled, opened notifications remain visible but are dimmed.
 - **Whitelist** - when enabled in the popup, only notifications matching at least one whitelist term are shown.
 - **Blacklist** - when enabled in the popup, notifications matching any blacklist term are hidden. Can be combined with whitelist.
+- **Clear unread backlog** - marks unread notification batches read on iNaturalist. It uses the maximum pages setting, with each page clearing up to 200 notifications.
 - **Purge** - clears all currently loaded notifications and extension-side opened/dismissed tracking for the current browser session.
 
 ## Notes
 
-- Fetching notifications does not mark them read on iNaturalist.
+- Normal fetching does not mark notifications read on iNaturalist. Use **Clear unread backlog** when you intentionally want to remove unread items from iNaturalist's notification list.
 - Read/recovery mode currently includes comments and identifications on observations, but not @mentions.
 - Filter-aware pagination applies to unread notification fetching. Read/recovery fetching uses one API request for up to 200 viewed updates.
 - Loaded notifications and opened/dismissed tracking are stored in `chrome.storage.session`, so they are cleared when the browser session ends or when you purge notifications.
