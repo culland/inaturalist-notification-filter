@@ -1,11 +1,12 @@
 console.log('[iNat] content script loaded');
 
 const BASE_URL = location.origin;
-const NOTIFICATIONS_URL = `${BASE_URL}/users/new_updates?notification=activity,mention&skip_view=true`;
+const NOTIFICATIONS_URL = `${BASE_URL}/users/new_updates?notification=activity,mention`;
 const API_BASE = 'https://api.inaturalist.org/v1';
 
-async function fetchPage(page) {
-  const url = `${NOTIFICATIONS_URL}&page=${page}`;
+async function fetchPage(page, markRead = false) {
+  const skipView = markRead ? '' : '&skip_view=true';
+  const url = `${NOTIFICATIONS_URL}${skipView}&page=${page}`;
   console.log('[iNat] fetching page', page, url);
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -92,13 +93,21 @@ async function fetchViewedFromApi() {
   return hits.map(apiHitToNotification).filter(Boolean);
 }
 
-async function saveAndCount(notifications) {
-  // Returns { totalStored, visibleCount } from the background after save.
-  if (!notifications.length) return { totalStored: 0, visibleCount: 0 };
-  const resp = await chrome.runtime.sendMessage({ action: 'saveNotifications', notifications });
+async function saveAndCount(notifications, options = {}) {
+  // Returns storage, visibility, and per-save deltas from the background.
+  if (!notifications.length) {
+    return { totalStored: 0, visibleCount: 0, newCount: 0, markedSeenCount: 0 };
+  }
+  const resp = await chrome.runtime.sendMessage({
+    action: 'saveNotifications',
+    notifications,
+    markSeen: !!options.markSeen
+  });
   return {
     totalStored: resp?.totalStored ?? 0,
-    visibleCount: resp?.visibleCount ?? 0
+    visibleCount: resp?.visibleCount ?? 0,
+    newCount: resp?.newCount ?? 0,
+    markedSeenCount: resp?.markedSeenCount ?? 0
   };
 }
 
@@ -106,6 +115,16 @@ function sendToBg(notifications) {
   if (notifications.length) {
     chrome.runtime.sendMessage({ action: 'saveNotifications', notifications });
   }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizePageLimit(value, fallback = 10) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(50, Math.max(1, Math.trunc(num)));
 }
 
 async function fetchUnreadHtml(maxPages, minVisible) {
@@ -142,9 +161,56 @@ async function fetchUnreadHtml(maxPages, minVisible) {
       break;
     }
     page++;
-    await new Promise(r => setTimeout(r, 500));
+    await delay(500);
   }
   return total;
+}
+
+async function clearUnreadBacklogHtml(maxPages) {
+  const limit = normalizePageLimit(maxPages);
+  let total = 0;
+  let batches = 0;
+
+  for (let batch = 1; batch <= limit; batch++) {
+    let parsed;
+    try {
+      const html = await fetchPage(1, true);
+      parsed = parseNotificationsFromHTML(html);
+    } catch (e) {
+      console.log('[iNat] clear backlog error on batch', batch, e.message, '— stopping');
+      throw e;
+    }
+
+    if (parsed.length === 0) {
+      console.log('[iNat] clear backlog stopping: batch', batch, 'returned zero notifications');
+      break;
+    }
+
+    const {
+      totalStored, visibleCount, newCount, markedSeenCount
+    } = await saveAndCount(parsed, { markSeen: true });
+    const delta = markedSeenCount;
+    total += delta;
+    batches = batch;
+    console.log(
+      '[iNat] clear backlog batch', batch,
+      '| parsed:', parsed.length,
+      '| newly stored:', newCount,
+      '| newly marked seen:', delta,
+      '| total marked read:', total,
+      '| total stored:', totalStored,
+      '| visible after filters:', visibleCount
+    );
+
+    if (delta === 0) {
+      console.log('[iNat] clear backlog stopping: batch', batch, 'had no new hrefs');
+      break;
+    }
+
+    if (batch < limit) await delay(500);
+  }
+
+  return { cleared: total, batches, maxPages: limit };
 }
 
 async function fetchReadApi() {
@@ -210,10 +276,56 @@ async function runFetchAllNotifications() {
   }
 }
 
+async function clearUnreadBacklog(maxPages) {
+  if (fetchInFlight) {
+    console.log('[iNat] fetch already in progress, skipping clear backlog');
+    return { ok: false, reason: 'fetch-in-flight' };
+  }
+  fetchInFlight = true;
+  try {
+    return await runClearUnreadBacklog(maxPages);
+  } finally {
+    fetchInFlight = false;
+  }
+}
+
+async function runClearUnreadBacklog(maxPages) {
+  chrome.runtime.sendMessage({ action: 'startLoading' });
+
+  try {
+    const result = await clearUnreadBacklogHtml(maxPages);
+    console.log('[iNat] clear unread backlog done, marked read:', result.cleared);
+    return { ok: true, ...result };
+  } catch (e) {
+    const reason = e && e.message ? e.message : String(e);
+    console.log('[iNat] clear unread backlog failed:', reason);
+    return { ok: false, reason };
+  } finally {
+    chrome.runtime.sendMessage({ action: 'loadingDone' });
+  }
+}
+
+function sendClearUnreadBacklogResult(result) {
+  chrome.runtime.sendMessage({
+    action: 'clearUnreadBacklogResult',
+    result
+  }).catch(e => console.log('[iNat] clear unread backlog result send failed:', e));
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === 'triggerFetch') {
     fetchAllNotifications().catch(e => console.log('[iNat] triggered fetch error', e));
     sendResponse({ ok: true });
+    return true;
+  }
+  if (msg && msg.action === 'clearUnreadBacklog') {
+    clearUnreadBacklog(msg.maxPages).then(sendClearUnreadBacklogResult, e => {
+      sendClearUnreadBacklogResult({
+        ok: false,
+        reason: e && e.message ? e.message : String(e)
+      });
+    });
+    sendResponse({ ok: true, started: true });
     return true;
   }
 });

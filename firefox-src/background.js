@@ -187,15 +187,25 @@ browser.runtime.onMessage.addListener((msg) => {
       seenHrefs = new Set(normalizeHrefList([...seenHrefs]));
       const existingHrefs = new Set(storedNotifications.map(n => n.href));
       const incoming = Array.isArray(msg.notifications) ? msg.notifications : [];
+      const incomingHrefs = new Set();
       const newItems = [];
       const seenIncoming = new Set();
 
       for (const n of incoming) {
         const href = safeHref(n && n.href);
         if (!href) continue;
+        incomingHrefs.add(href);
         if (existingHrefs.has(href) || seenIncoming.has(href)) continue;
         seenIncoming.add(href);
         newItems.push({ ...n, href });
+      }
+
+      let markedSeenCount = 0;
+      if (msg.markSeen) {
+        for (const href of incomingHrefs) {
+          if (!seenHrefs.has(href)) markedSeenCount++;
+          seenHrefs.add(href);
+        }
       }
 
       storedNotifications = [...newItems, ...storedNotifications];
@@ -205,8 +215,15 @@ browser.runtime.onMessage.addListener((msg) => {
         'whitelist', 'blacklist', 'useFilter', 'useBlacklist', 'hideClickedNotifications'
       ]);
       const visibleCount = countVisible(storedNotifications, seenHrefs, prefs);
+      if (msg.markSeen) updateBadge();
       console.log('[iNat BG] total stored:', storedNotifications.length, 'visible:', visibleCount);
-      return { ok: true, totalStored: storedNotifications.length, visibleCount };
+      return {
+        ok: true,
+        totalStored: storedNotifications.length,
+        visibleCount,
+        newCount: newItems.length,
+        markedSeenCount
+      };
     });
   }
 
@@ -272,6 +289,32 @@ browser.runtime.onMessage.addListener((msg) => {
         () => ({ ok: true }),
         e => ({ ok: false, reason: String(e) })
       );
+    });
+  }
+
+  if (msg.action === 'clearUnreadBacklog') {
+    return browser.storage.local.get('maxPages').then(stored => {
+      const maxPages = msg.maxPages || stored.maxPages || 10;
+      return browser.tabs.query({
+        url: [
+          '*://www.inaturalist.org/*',
+          '*://inaturalist.org/*',
+          '*://www.inaturalist.ca/*',
+          '*://inaturalist.ca/*'
+        ]
+      }).then(tabs => {
+        if (!tabs || tabs.length === 0) {
+          return { ok: false, reason: 'no-inat-tab' };
+        }
+        const target = tabs.find(t => t.active) || tabs[0];
+        return browser.tabs.sendMessage(target.id, {
+          action: 'clearUnreadBacklog',
+          maxPages
+        }).then(
+          result => result || { ok: true },
+          e => ({ ok: false, reason: String(e) })
+        );
+      });
     });
   }
 

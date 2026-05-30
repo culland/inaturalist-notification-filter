@@ -23,12 +23,52 @@ const maxPagesInput = document.getElementById('max-pages');
 const minVisibleInput = document.getElementById('min-visible');
 const purgeBtn = document.getElementById('purge-btn');
 const purgeMsg = document.getElementById('purge-msg');
+const clearBacklogBtn = document.getElementById('clear-backlog-btn');
+const clearBacklogMsg = document.getElementById('clear-backlog-msg');
 const fetchModeSelect = document.getElementById('fetch-mode');
 const hideClickedCheckbox = document.getElementById('hide-clicked');
+let clearBacklogMessageTimer = null;
+let clearBacklogRunning = false;
 
 function showSaved() {
   savedMsg.classList.add('show');
   setTimeout(() => savedMsg.classList.remove('show'), 2000);
+}
+
+function showClearBacklogMessage(text, color, hideAfter = 4000) {
+  if (clearBacklogMessageTimer) clearTimeout(clearBacklogMessageTimer);
+  clearBacklogMsg.textContent = text;
+  clearBacklogMsg.style.color = color;
+  clearBacklogMsg.classList.add('show');
+  if (hideAfter > 0) {
+    clearBacklogMessageTimer = setTimeout(() => {
+      clearBacklogMsg.classList.remove('show');
+    }, hideAfter);
+  }
+}
+
+function clearBacklogErrorMessage(reason) {
+  if (reason === 'no-inat-tab') return 'Open an iNaturalist tab first.';
+  if (reason === 'fetch-in-flight') return 'A notification fetch is already running.';
+  return 'Clear failed.';
+}
+
+function finishClearBacklog(resp) {
+  clearBacklogRunning = false;
+  clearBacklogBtn.disabled = false;
+
+  if (resp?.ok) {
+    const cleared = resp.cleared || 0;
+    let message = cleared === 1
+      ? 'Marked 1 unread notification read.'
+      : `Marked ${cleared} unread notifications read.`;
+    if (cleared > 0 && resp.batches >= resp.maxPages) {
+      message += ' Reached page cap; re-run if more remain.';
+    }
+    showClearBacklogMessage(message, '#74ac00', 6000);
+  } else {
+    showClearBacklogMessage(clearBacklogErrorMessage(resp?.reason), '#c0392b', 5000);
+  }
 }
 
 function normalizeTermList(value, fallback) {
@@ -167,6 +207,39 @@ purgeBtn.addEventListener('click', () => {
     purgeMsg.classList.add('show');
     setTimeout(() => purgeMsg.classList.remove('show'), 2000);
   });
+});
+
+clearBacklogBtn.addEventListener('click', () => {
+  if (!window.confirm('This marks unread notification batches read on iNaturalist. Continue?')) return;
+
+  const requestedMaxPages = clampInteger(
+    maxPagesInput.value,
+    maxPages,
+    MIN_PAGES_LIMIT,
+    MAX_PAGES_LIMIT
+  );
+  maxPages = requestedMaxPages;
+  maxPagesInput.value = maxPages;
+
+  clearBacklogRunning = true;
+  clearBacklogBtn.disabled = true;
+  showClearBacklogMessage('Clearing...', '#8a6d3b', 0);
+
+  chrome.runtime.sendMessage({
+    action: 'clearUnreadBacklog',
+    maxPages: requestedMaxPages
+  }).then(resp => {
+    if (resp?.started) return;
+    finishClearBacklog(resp);
+  }).catch(() => {
+    finishClearBacklog({ ok: false });
+  });
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.action !== 'clearUnreadBacklogResult') return false;
+  if (clearBacklogRunning) finishClearBacklog(msg.result);
+  return false;
 });
 
 chrome.storage.local.get([
