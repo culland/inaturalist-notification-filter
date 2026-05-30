@@ -214,8 +214,8 @@ function renderNotifications(state) {
     const dismissBtn = document.createElement('button');
     dismissBtn.type = 'button';
     dismissBtn.className = 'dismiss-btn';
-    dismissBtn.title = 'Mark read and hide';
-    dismissBtn.setAttribute('aria-label', 'Mark read and hide');
+    dismissBtn.title = 'Dismiss and hide';
+    dismissBtn.setAttribute('aria-label', 'Dismiss and hide');
     dismissBtn.textContent = '×';
     dismissBtn.addEventListener('click', (e) => {
       e.preventDefault();

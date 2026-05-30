@@ -1,11 +1,12 @@
 console.log('[iNat] content script loaded');
 
 const BASE_URL = location.origin;
-const NOTIFICATIONS_URL = `${BASE_URL}/users/new_updates?notification=activity,mention&skip_view=true`;
+const NOTIFICATIONS_URL = `${BASE_URL}/users/new_updates?notification=activity,mention`;
 const API_BASE = 'https://api.inaturalist.org/v1';
 
-async function fetchPage(page) {
-  const url = `${NOTIFICATIONS_URL}&page=${page}`;
+async function fetchPage(page, markRead = false) {
+  const skipView = markRead ? '' : '&skip_view=true';
+  const url = `${NOTIFICATIONS_URL}${skipView}&page=${page}`;
   console.log('[iNat] fetching page', page, url);
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -108,6 +109,16 @@ function sendToBg(notifications) {
   }
 }
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizePageLimit(value, fallback = 10) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(50, Math.max(1, Math.trunc(num)));
+}
+
 async function fetchUnreadHtml(maxPages, minVisible) {
   let page = 1;
   let total = 0;
@@ -142,9 +153,46 @@ async function fetchUnreadHtml(maxPages, minVisible) {
       break;
     }
     page++;
-    await new Promise(r => setTimeout(r, 500));
+    await delay(500);
   }
   return total;
+}
+
+async function clearUnreadBacklogHtml(maxPages) {
+  const limit = normalizePageLimit(maxPages);
+  let total = 0;
+  let batches = 0;
+
+  for (let batch = 1; batch <= limit; batch++) {
+    let parsed;
+    try {
+      const html = await fetchPage(1, true);
+      parsed = parseNotificationsFromHTML(html);
+    } catch (e) {
+      console.log('[iNat] clear backlog error on batch', batch, e.message, '— stopping');
+      throw e;
+    }
+
+    if (parsed.length === 0) {
+      console.log('[iNat] clear backlog stopping: batch', batch, 'returned zero notifications');
+      break;
+    }
+
+    const { totalStored, visibleCount } = await saveAndCount(parsed);
+    total += parsed.length;
+    batches = batch;
+    console.log(
+      '[iNat] clear backlog batch', batch,
+      '| marked read:', parsed.length,
+      '| total marked read:', total,
+      '| total stored:', totalStored,
+      '| visible after filters:', visibleCount
+    );
+
+    if (batch < limit) await delay(500);
+  }
+
+  return { cleared: total, batches, maxPages: limit };
 }
 
 async function fetchReadApi() {
@@ -210,10 +258,42 @@ async function runFetchAllNotifications() {
   }
 }
 
+async function clearUnreadBacklog(maxPages) {
+  if (fetchInFlight) {
+    console.log('[iNat] fetch already in progress, skipping clear backlog');
+    return { ok: false, reason: 'fetch-in-flight' };
+  }
+  fetchInFlight = true;
+  try {
+    return await runClearUnreadBacklog(maxPages);
+  } finally {
+    fetchInFlight = false;
+  }
+}
+
+async function runClearUnreadBacklog(maxPages) {
+  browser.runtime.sendMessage({ action: 'startLoading' });
+
+  try {
+    const result = await clearUnreadBacklogHtml(maxPages);
+    console.log('[iNat] clear unread backlog done, marked read:', result.cleared);
+    return { ok: true, ...result };
+  } catch (e) {
+    const reason = e && e.message ? e.message : String(e);
+    console.log('[iNat] clear unread backlog failed:', reason);
+    return { ok: false, reason };
+  } finally {
+    browser.runtime.sendMessage({ action: 'loadingDone' });
+  }
+}
+
 browser.runtime.onMessage.addListener((msg) => {
   if (msg && msg.action === 'triggerFetch') {
     fetchAllNotifications().catch(e => console.log('[iNat] triggered fetch error', e));
     return Promise.resolve({ ok: true });
+  }
+  if (msg && msg.action === 'clearUnreadBacklog') {
+    return clearUnreadBacklog(msg.maxPages);
   }
   return false;
 });

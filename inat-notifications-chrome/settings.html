@@ -58,6 +58,8 @@
     .info { font-size: 12px; color: #888; margin-top: 12px; line-height: 1.6; }
     .saved-msg { color: #74ac00; font-size: 12px; margin-left: 8px; opacity: 0; transition: opacity 0.3s; }
     .saved-msg.show { opacity: 1; }
+    .action-msg { display: block; margin: 8px 0 0 0; }
+    button:disabled { opacity: 0.6; cursor: default; }
     .pages-row { display: flex; align-items: center; gap: 12px; }
     .pages-label { font-size: 13px; color: #555; }
     select {
@@ -112,7 +114,7 @@
       review or re-open them.<br><br>
       <strong>Unread + read</strong>: combines both — useful if you suspect some items
       slipped into "read" status but you still want fresh unread items too.<br><br>
-      Fetching never marks notifications read on iNaturalist.<br>
+      Normal fetching never marks notifications read on iNaturalist.<br>
       Note: Read/recovery fetches use the iNaturalist API and currently include only
       comments and identifications on observations — not @mentions.
     </p>
@@ -179,7 +181,14 @@
 
   <div class="card">
     <h2>Notifications</h2>
-    <p class="info" style="margin-bottom:12px;">Purge all currently loaded notifications from the popup. They will be re-fetched fresh on the next iNaturalist page load.</p>
+    <p class="info" style="margin-bottom:12px;">
+      Clear unread backlog marks unread notification batches read on iNaturalist.
+      It uses the maximum pages setting above, with each page clearing up to 200
+      unread notifications. Keep an iNaturalist tab open while it runs.
+    </p>
+    <button id="clear-backlog-btn" style="background:#8a6d3b;">Clear iNaturalist unread backlog</button>
+    <span id="clear-backlog-msg" class="saved-msg action-msg"></span>
+    <p class="info" style="margin-bottom:12px; margin-top:18px;">Purge all currently loaded notifications from the popup. They will be re-fetched fresh on the next iNaturalist page load.</p>
     <button id="purge-btn" style="background:#c0392b;">Purge notifications</button>
     <span id="purge-msg" class="saved-msg" style="color:#c0392b;">Purged!</span>
   </div>

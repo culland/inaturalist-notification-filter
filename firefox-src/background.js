@@ -275,6 +275,32 @@ browser.runtime.onMessage.addListener((msg) => {
     });
   }
 
+  if (msg.action === 'clearUnreadBacklog') {
+    return browser.storage.local.get('maxPages').then(stored => {
+      const maxPages = msg.maxPages || stored.maxPages || 10;
+      return browser.tabs.query({
+        url: [
+          '*://www.inaturalist.org/*',
+          '*://inaturalist.org/*',
+          '*://www.inaturalist.ca/*',
+          '*://inaturalist.ca/*'
+        ]
+      }).then(tabs => {
+        if (!tabs || tabs.length === 0) {
+          return { ok: false, reason: 'no-inat-tab' };
+        }
+        const target = tabs.find(t => t.active) || tabs[0];
+        return browser.tabs.sendMessage(target.id, {
+          action: 'clearUnreadBacklog',
+          maxPages
+        }).then(
+          result => result || { ok: true },
+          e => ({ ok: false, reason: String(e) })
+        );
+      });
+    });
+  }
+
   if (msg.action === 'purgeNotifications') {
     return queueStorageWrite(async () => {
       await clearRuntimeState();

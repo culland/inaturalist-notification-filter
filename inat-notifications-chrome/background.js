@@ -302,6 +302,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.action === 'clearUnreadBacklog') {
+    (async () => {
+      const stored = await chrome.storage.local.get('maxPages');
+      const maxPages = msg.maxPages || stored.maxPages || 10;
+      const tabs = await chrome.tabs.query({
+        url: [
+          '*://www.inaturalist.org/*',
+          '*://inaturalist.org/*',
+          '*://www.inaturalist.ca/*',
+          '*://inaturalist.ca/*'
+        ]
+      });
+      if (!tabs || tabs.length === 0) {
+        sendResponse({ ok: false, reason: 'no-inat-tab' });
+        return;
+      }
+      const target = tabs.find(t => t.active) || tabs[0];
+      try {
+        const result = await chrome.tabs.sendMessage(target.id, {
+          action: 'clearUnreadBacklog',
+          maxPages
+        });
+        sendResponse(result || { ok: true });
+      } catch (e) {
+        sendResponse({ ok: false, reason: String(e) });
+      }
+    })();
+    return true;
+  }
+
   if (msg.action === 'purgeNotifications') {
     chrome.storage.session.set({ notifications: [], seenHrefs: [] }).then(() => {
       setGrayIcon();
