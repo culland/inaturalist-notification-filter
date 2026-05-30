@@ -93,13 +93,21 @@ async function fetchViewedFromApi() {
   return hits.map(apiHitToNotification).filter(Boolean);
 }
 
-async function saveAndCount(notifications) {
-  // Returns { totalStored, visibleCount } from the background after save.
-  if (!notifications.length) return { totalStored: 0, visibleCount: 0 };
-  const resp = await chrome.runtime.sendMessage({ action: 'saveNotifications', notifications });
+async function saveAndCount(notifications, options = {}) {
+  // Returns storage, visibility, and per-save deltas from the background.
+  if (!notifications.length) {
+    return { totalStored: 0, visibleCount: 0, newCount: 0, markedSeenCount: 0 };
+  }
+  const resp = await chrome.runtime.sendMessage({
+    action: 'saveNotifications',
+    notifications,
+    markSeen: !!options.markSeen
+  });
   return {
     totalStored: resp?.totalStored ?? 0,
-    visibleCount: resp?.visibleCount ?? 0
+    visibleCount: resp?.visibleCount ?? 0,
+    newCount: resp?.newCount ?? 0,
+    markedSeenCount: resp?.markedSeenCount ?? 0
   };
 }
 
@@ -178,16 +186,26 @@ async function clearUnreadBacklogHtml(maxPages) {
       break;
     }
 
-    const { totalStored, visibleCount } = await saveAndCount(parsed);
-    total += parsed.length;
+    const {
+      totalStored, visibleCount, newCount, markedSeenCount
+    } = await saveAndCount(parsed, { markSeen: true });
+    const delta = markedSeenCount;
+    total += delta;
     batches = batch;
     console.log(
       '[iNat] clear backlog batch', batch,
-      '| marked read:', parsed.length,
+      '| parsed:', parsed.length,
+      '| newly stored:', newCount,
+      '| newly marked seen:', delta,
       '| total marked read:', total,
       '| total stored:', totalStored,
       '| visible after filters:', visibleCount
     );
+
+    if (delta === 0) {
+      console.log('[iNat] clear backlog stopping: batch', batch, 'had no new hrefs');
+      break;
+    }
 
     if (batch < limit) await delay(500);
   }
@@ -287,6 +305,13 @@ async function runClearUnreadBacklog(maxPages) {
   }
 }
 
+function sendClearUnreadBacklogResult(result) {
+  chrome.runtime.sendMessage({
+    action: 'clearUnreadBacklogResult',
+    result
+  }).catch(e => console.log('[iNat] clear unread backlog result send failed:', e));
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === 'triggerFetch') {
     fetchAllNotifications().catch(e => console.log('[iNat] triggered fetch error', e));
@@ -294,9 +319,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.action === 'clearUnreadBacklog') {
-    clearUnreadBacklog(msg.maxPages).then(sendResponse, e => {
-      sendResponse({ ok: false, reason: e && e.message ? e.message : String(e) });
+    clearUnreadBacklog(msg.maxPages).then(sendClearUnreadBacklogResult, e => {
+      sendClearUnreadBacklogResult({
+        ok: false,
+        reason: e && e.message ? e.message : String(e)
+      });
     });
+    sendResponse({ ok: true, started: true });
     return true;
   }
 });

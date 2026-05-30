@@ -185,14 +185,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const seenHrefs = new Set(normalizeHrefList(session.seenHrefs));
         const existingHrefs = new Set(existing.map(n => n.href));
         const incoming = Array.isArray(msg.notifications) ? msg.notifications : [];
+        const incomingHrefs = new Set();
         const newItems = [];
         const seenIncoming = new Set();
         for (const n of incoming) {
           const href = safeHref(n && n.href);
           if (!href) continue;
+          incomingHrefs.add(href);
           if (existingHrefs.has(href) || seenIncoming.has(href)) continue;
           seenIncoming.add(href);
           newItems.push({ ...n, href });
+        }
+        let markedSeenCount = 0;
+        if (msg.markSeen) {
+          for (const href of incomingHrefs) {
+            if (!seenHrefs.has(href)) markedSeenCount++;
+            seenHrefs.add(href);
+          }
         }
         const all = [...newItems, ...existing];
         await chrome.storage.session.set({
@@ -203,7 +212,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           'whitelist', 'blacklist', 'useFilter', 'useBlacklist', 'hideClickedNotifications'
         ]);
         const visibleCount = countVisible(all, seenHrefs, prefs);
-        return { ok: true, totalStored: all.length, visibleCount };
+        if (msg.markSeen) await updateBadge();
+        return {
+          ok: true,
+          totalStored: all.length,
+          visibleCount,
+          newCount: newItems.length,
+          markedSeenCount
+        };
       });
       sendResponse(result);
     })();
@@ -319,16 +335,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
       const target = tabs.find(t => t.active) || tabs[0];
-      try {
-        const result = await chrome.tabs.sendMessage(target.id, {
-          action: 'clearUnreadBacklog',
-          maxPages
-        });
-        sendResponse(result || { ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, reason: String(e) });
-      }
+      chrome.tabs.sendMessage(target.id, {
+        action: 'clearUnreadBacklog',
+        maxPages
+      }).catch(e => {
+        chrome.runtime.sendMessage({
+          action: 'clearUnreadBacklogResult',
+          result: { ok: false, reason: String(e) }
+        }).catch(() => {});
+      });
+      sendResponse({ ok: true, started: true });
     })();
+    return true;
+  }
+
+  if (msg.action === 'clearUnreadBacklogResult') {
+    sendResponse({ ok: true });
     return true;
   }
 

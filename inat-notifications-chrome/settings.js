@@ -28,6 +28,7 @@ const clearBacklogMsg = document.getElementById('clear-backlog-msg');
 const fetchModeSelect = document.getElementById('fetch-mode');
 const hideClickedCheckbox = document.getElementById('hide-clicked');
 let clearBacklogMessageTimer = null;
+let clearBacklogRunning = false;
 
 function showSaved() {
   savedMsg.classList.add('show');
@@ -50,6 +51,24 @@ function clearBacklogErrorMessage(reason) {
   if (reason === 'no-inat-tab') return 'Open an iNaturalist tab first.';
   if (reason === 'fetch-in-flight') return 'A notification fetch is already running.';
   return 'Clear failed.';
+}
+
+function finishClearBacklog(resp) {
+  clearBacklogRunning = false;
+  clearBacklogBtn.disabled = false;
+
+  if (resp?.ok) {
+    const cleared = resp.cleared || 0;
+    let message = cleared === 1
+      ? 'Marked 1 unread notification read.'
+      : `Marked ${cleared} unread notifications read.`;
+    if (cleared > 0 && resp.batches >= resp.maxPages) {
+      message += ' Reached page cap; re-run if more remain.';
+    }
+    showClearBacklogMessage(message, '#74ac00', 6000);
+  } else {
+    showClearBacklogMessage(clearBacklogErrorMessage(resp?.reason), '#c0392b', 5000);
+  }
 }
 
 function normalizeTermList(value, fallback) {
@@ -202,6 +221,7 @@ clearBacklogBtn.addEventListener('click', () => {
   maxPages = requestedMaxPages;
   maxPagesInput.value = maxPages;
 
+  clearBacklogRunning = true;
   clearBacklogBtn.disabled = true;
   showClearBacklogMessage('Clearing...', '#8a6d3b', 0);
 
@@ -209,23 +229,17 @@ clearBacklogBtn.addEventListener('click', () => {
     action: 'clearUnreadBacklog',
     maxPages: requestedMaxPages
   }).then(resp => {
-    if (resp?.ok) {
-      const cleared = resp.cleared || 0;
-      let message = cleared === 1
-        ? 'Marked 1 unread notification read.'
-        : `Marked ${cleared} unread notifications read.`;
-      if (cleared > 0 && resp.batches >= resp.maxPages) {
-        message += ' Reached page cap; re-run if more remain.';
-      }
-      showClearBacklogMessage(message, '#74ac00', 6000);
-    } else {
-      showClearBacklogMessage(clearBacklogErrorMessage(resp?.reason), '#c0392b', 5000);
-    }
+    if (resp?.started) return;
+    finishClearBacklog(resp);
   }).catch(() => {
-    showClearBacklogMessage('Clear failed.', '#c0392b', 5000);
-  }).finally(() => {
-    clearBacklogBtn.disabled = false;
+    finishClearBacklog({ ok: false });
   });
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.action !== 'clearUnreadBacklogResult') return false;
+  if (clearBacklogRunning) finishClearBacklog(msg.result);
+  return false;
 });
 
 chrome.storage.local.get([
